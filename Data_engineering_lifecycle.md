@@ -23,6 +23,9 @@ Once the data is processed and stored in SingleStore, it is consumed by various 
 *   **Scheduler Service:** To prevent the database from growing infinitely and crashing, a dedicated scheduler microservice reads JSON configurations to determine "busy hours". During off-peak times, it triggers stored SQL procedures (like `nfload_rawdata_flush` and `RAN_CellIdentifierAgg_flush`) to safely delete and flush expired data from the MemSQL tables based on retention policies.
 
 
+What is the data wareshouse/data lake?
+
+
 In the NWDAF architecture, there is no explicit mention of a standalone "data lake" (like AWS S3) or a separate "data warehouse" (like Snowflake). Instead, the platform relies on **SingleStore (MemSQL)** as a unified, high-performance database that effectively serves the functions of both.
 
 Here is how SingleStore handles these responsibilities within your data engineering lifecycle:
@@ -38,9 +41,11 @@ Once the raw data is stored, SingleStore is heavily utilized for ETL (Extract, T
 **3. Data Retention Management**
 Because storing raw telemetry data for millions of subscribers would eventually overwhelm the system, the platform does not store historical data indefinitely like a traditional long-term data lake. Instead, you built a dedicated scheduler microservice that executes automated batch cleanups (e.g., `nfload_rawdata_flush`) during off-peak network hours to safely delete expired data based on configured retention policies (e.g., older than 48 hours).
 
-What is the data wareshouse/data lake?
+
 
 How did the scheduler microservice prevent database crashes during peaks?
+
+
 The scheduler microservice prevented database crashes by proactively managing data retention so the MemSQL database did not grow infinitely and become overwhelmed. It accomplished this through the following mechanisms:
 
 *   **Tracking Peak Traffic:** The scheduler read JSON configuration files to explicitly define network "busy hours" (e.g., peak times starting at 6 and ending at 11).
