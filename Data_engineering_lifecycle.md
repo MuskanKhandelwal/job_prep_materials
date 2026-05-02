@@ -67,7 +67,7 @@ The data collection is driven by two primary predictive use cases:
 
 In summary, the ingested data is carrier-grade 5G network telemetry—ranging from internal hardware metrics scraped by Prometheus to raw IPv6 network traffic streamed via Kafka.
 
-
+![NWDAF data pipeline](./assets/nwdaf_data_pipeline.svg)
 
 
 # Data Engineering Lifecycle — Interview Study Guide
