@@ -196,7 +196,7 @@ Here's the loop these two concepts form: horizontal scaling lets you handle more
 A modern AWS-based web application might look like: **Route 53** (DNS) → **CloudFront** (CDN) → **Application Load Balancer** → **EKS** running your app pods (auto-scaled) → **ElastiCache for Redis** (sessions/cache) and **RDS** (database). Swap AWS names for GCP or Azure equivalents and the architecture is essentially the same.
 
 # Flow diagram
-
+![Flow diagram](./assets/request_flow_through_load_balancer_to_horizontally_scaled_servers.svg)
 ## Reading the diagram
 
 A few things worth noticing in how this flows:
@@ -208,5 +208,3 @@ A few things worth noticing in how this flows:
 **The bottom row (session cache + database)** is the shared state that the stateless app servers depend on. Sessions go to Redis so that any app server can pick up where another left off. The database holds the actual application data. These tiers scale differently — typically with replication and caching, which we covered earlier.
 
 The arrows fanning out from the load balancer are the heart of it: one inbound request, three possible servers, and the load balancer's algorithm (round-robin, least-connections, etc.) picks one. Next request, possibly a different server. Health checks (not drawn, but happening continuously between the load balancer and each app server) ensure dead servers stop receiving traffic.
-
-Want me to draw a second diagram showing what happens when a server fails (the failover flow), or zoom into how the load balancer's health checks and algorithms actually work?
