@@ -158,8 +158,55 @@ Treat sticky sessions as a workaround, not a strategy. The right long-term move 
 
 Here's the loop these two concepts form: horizontal scaling lets you handle more load, but only if requests are distributed across the fleet — which requires a load balancer. The load balancer enables the fleet to be elastic (servers come and go) and fault-tolerant (failures are routed around). Statelessness is what makes the load balancer's job easy: any server can handle any request, so distribution is trivial. Lose any one of these — stateless servers, a smart load balancer, or a homogeneous fleet — and the others get much harder.
 
-When Malan walks through this in the Harvard lecture, he builds it up incrementally: one server, then two with a DNS round-robin (a primitive load balancer), then a real load balancer, then he hits the session-stickiness problem and discusses solutions. Watching with this framing should make every step feel motivated rather than arbitrary.
 
----
+# Real-world tools and products
 
-Want to test your understanding with a small design exercise? I can give you a scenario ("design the architecture for a site that suddenly went viral on Reddit") and we can work through what you'd add at each step. Or we can move to another pair of topics tomorrow — your call.
+## Load balancers
+
+**Cloud-managed (most common today):**
+- **AWS Elastic Load Balancing** — comes in three flavors: Application Load Balancer (ALB) for Layer 7 HTTP traffic, Network Load Balancer (NLB) for Layer 4 high-throughput TCP, and Gateway Load Balancer for routing through security appliances. ALB is the default choice for most web apps on AWS.
+- **Google Cloud Load Balancing** — globally distributed, handles both L4 and L7. Notable for its single global anycast IP that routes users to the nearest region automatically.
+- **Azure Load Balancer** (L4) and **Azure Application Gateway** (L7) — Microsoft's equivalents.
+- **Cloudflare Load Balancing** — runs at the edge, often combined with their CDN and DDoS protection.
+
+**Self-hosted (when you want control or aren't on a major cloud):**
+- **NGINX** — the dominant open-source web server and reverse proxy. Used as a load balancer by an enormous fraction of the web. Free open-source version plus a commercial NGINX Plus with extra features.
+- **HAProxy** — a venerable, extremely fast load balancer specialized for the job. Often chosen when raw performance matters or when you need its sophisticated routing rules.
+- **Envoy** — a modern proxy originally built at Lyft, now the data plane behind service meshes like Istio. Common in Kubernetes environments.
+- **Traefik** — popular in Docker/Kubernetes worlds because it auto-discovers services as containers come and go.
+
+**Hardware load balancers** like F5 BIG-IP and Citrix ADC still exist in enterprise data centers, but cloud-native software load balancers have largely displaced them for new builds.
+
+## Horizontal scaling infrastructure
+
+**Compute platforms where your fleet actually runs:**
+- **AWS EC2 Auto Scaling Groups** — define a launch template and scaling rules ("add servers when CPU > 70%"), and AWS manages the fleet.
+- **Google Cloud Managed Instance Groups** and **Azure Virtual Machine Scale Sets** — equivalents.
+- **Kubernetes** — the dominant container orchestrator. Its Horizontal Pod Autoscaler scales the number of pods based on CPU, memory, or custom metrics. Managed flavors include **Amazon EKS**, **Google GKE**, and **Azure AKS**.
+- **AWS ECS / Fargate**, **Google Cloud Run**, **Azure Container Apps** — simpler container platforms if you don't want full Kubernetes.
+- **Serverless platforms** like **AWS Lambda**, **Cloudflare Workers**, and **Vercel** take this to the extreme: you don't manage servers at all, and the platform scales from zero to thousands of concurrent executions automatically.
+
+**Session/state storage** (so your servers can be stateless):
+- **Redis** (often via **AWS ElastiCache**, **Google Memorystore**, or **Redis Cloud**) — the standard choice for session storage.
+- **Memcached** — older, simpler, still in use.
+- **DynamoDB**, **Firestore** — sometimes used for sessions when you want a managed NoSQL store.
+
+## Putting it together: a typical real-world stack
+
+A modern AWS-based web application might look like: **Route 53** (DNS) → **CloudFront** (CDN) → **Application Load Balancer** → **EKS** running your app pods (auto-scaled) → **ElastiCache for Redis** (sessions/cache) and **RDS** (database). Swap AWS names for GCP or Azure equivalents and the architecture is essentially the same.
+
+# Flow diagram
+
+## Reading the diagram
+
+A few things worth noticing in how this flows:
+
+**The top half (DNS → CDN → Load balancer)** is mostly about *getting* the request to your infrastructure efficiently. DNS resolves your domain to an IP, the CDN serves cached static assets without bothering your servers at all, and the load balancer is the entry point for anything dynamic.
+
+**The middle row (three app servers)** is where horizontal scaling lives. Notice they're all the same color and labeled "stateless" — that's the key property that lets the load balancer treat them as interchangeable. The auto-scaling group can grow this row to 30 servers during a traffic spike or shrink it to 2 overnight.
+
+**The bottom row (session cache + database)** is the shared state that the stateless app servers depend on. Sessions go to Redis so that any app server can pick up where another left off. The database holds the actual application data. These tiers scale differently — typically with replication and caching, which we covered earlier.
+
+The arrows fanning out from the load balancer are the heart of it: one inbound request, three possible servers, and the load balancer's algorithm (round-robin, least-connections, etc.) picks one. Next request, possibly a different server. Health checks (not drawn, but happening continuously between the load balancer and each app server) ensure dead servers stop receiving traffic.
+
+Want me to draw a second diagram showing what happens when a server fails (the failover flow), or zoom into how the load balancer's health checks and algorithms actually work?
