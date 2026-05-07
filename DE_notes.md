@@ -279,7 +279,7 @@ I broke the problem into four pieces:
 
 1. **Diagnosed the real bottleneck.** I instrumented query latency by table and confirmed the slowdown wasn't from query complexity — it was from Rowstore memory pressure forcing more pages to spill. So the fix had to **reduce row count**, not optimize SQL.
 
-2. **Designed a config-driven scheduler microservice.** Rather than baking retention into each service or running a cron, I built a small Go service that read JSON configs defining busy hours per region (e.g., `busy_start=6`, `busy_end=23`) and per-table retention windows. This **decoupled policy from code** — ops could tune retention without a redeploy.
+2. **Designed a config-driven scheduler microservice.** Rather than baking retention into each service or running a cron, I built a small service that read JSON configs defining busy hours per region (e.g., `busy_start=6`, `busy_end=23`) and per-table retention windows. This **decoupled policy from code** — ops could tune retention without a redeploy.
 
 3. **Wrote idempotent stored procedures with bounded delete batches.** Procedures like `nfload_rawdata_flush` computed a threshold timestamp (`now() - retention_hours`) and deleted in chunks of 10K rows with a small sleep between batches. This was critical — a single `DELETE WHERE ts < threshold` on a multi-billion-row table would have locked the table and blocked inference reads. Chunking kept each transaction small enough that feature lookups didn't even notice.
 
@@ -289,7 +289,7 @@ I also added Prometheus metrics on rows deleted, batch duration, and lag-vs-targ
 
 ### Result *(15–20 seconds)*
 
-After rollout, SingleStore memory utilization stabilized at **~60% of the cluster ceiling** instead of climbing toward OOM. Peak-hour p99 feature-lookup latency dropped from **~200ms back to under 10ms**. We had **zero retention-related incidents** in the following two quarters, and the same scheduler pattern was reused for three other cleanup workloads in adjacent services. The AI inference SLA went from being our top operational risk to a non-issue.
+After rollout, SingleStore memory utilization stabilized at **~60% of the cluster ceiling**. Peak-hour p99 feature-lookup latency dropped from **~200ms back to under 10ms**. We had **zero retention-related incidents** in the following two quarters, and the same scheduler pattern was reused for three other cleanup workloads in adjacent services. The AI inference SLA went from being our top operational risk to a non-issue.
 
 ### What to expect as follow-ups
 
@@ -314,7 +314,7 @@ After rollout, SingleStore memory utilization stabilized at **~60% of the cluste
 
 For when an interviewer cuts you off or for behavioral phone screens:
 
-> *"At Mavenir's 5G NWDAF platform, our SingleStore feature store was growing unboundedly under subscriber load — feature-lookup p99 climbed from 5ms to 200ms and the cluster twice OOM'd, breaking AI inference. I designed a config-driven Go scheduler that ran chunked DELETE stored procedures during off-peak hours only, with per-table retention policies and automatic yield if peak traffic resumed. Memory stabilized at 60%, p99 went back under 10ms, and we had zero retention incidents for two quarters. The same pattern got reused across three other services."*
+> *"At Mavenir's 5G NWDAF platform, our SingleStore feature store was growing unboundedly under subscriber load — feature-lookup p99 climbed from 5ms to 200ms and the cluster twice OOM'd, breaking AI inference. I designed a config-driven scheduler that ran chunked DELETE stored procedures during off-peak hours only, with per-table retention policies and automatic yield if peak traffic resumed. Memory stabilized at 60%, p99 went back under 10ms, and we had zero retention incidents for two quarters. The same pattern got reused across three other services."*
 
 ---
 
