@@ -351,3 +351,99 @@ For when an interviewer cuts you off or for behavioral phone screens:
 - *"It just worked."* — interviewers want trade-offs, not vibes.
 - Listing 10 tools without grouping them by purpose.
 
+
+## Concepts to learn:
+1. Idempotency: https://aloknecessary.github.io/blogs/idempotency-distributed-systems/?utm_source=chatgpt.com Done
+Good diff between Idempotency and deduplication.
+
+2. p99 Latency + SLA/SLO Thinking
+
+“p99 latency”
+“strict inference SLA”
+“peak-hour traffic”
+
+Most candidates say these words without understanding them.
+
+You should know:
+
+what p99 means
+why tail latency matters
+what SLA/SLO/SLI are
+why cleanup jobs can hurt latency
+Learn:
+tail latency
+operational reliability
+observability basics
+Best resources
+Google SRE Book
+Distributed Systems Concepts — SLA/SLO/SLI Explained
+
+Key interview sentence:
+
+“The challenge wasn’t deleting data — it was guaranteeing cleanup never violated inference latency SLOs.” 
+
+3. Database Retention + Chunked Deletes
+
+This is the “why your design mattered” concept.
+
+You need to understand:
+
+why huge DELETEs are dangerous
+long-running transactions
+locks
+memory pressure
+partitioning
+write amplification
+
+This is what makes your answer believable.
+
+Learn:
+chunked deletes
+partitioning
+TTL
+database compaction
+Best resources
+Use The Index, Luke!
+Postgres MVCC and Vacuum Explained
+
+Key interview sentence:
+
+“A giant DELETE on a multi-billion-row table can create lock contention and latency spikes, so we bounded transaction size aggressively.”
+
+4. Control Loops (Hidden Senior-Level Concept)
+
+This is the BIG hidden concept in your Airflow answer.
+
+Your scheduler was NOT:
+
+cron
+ETL
+DAG orchestration
+
+It was a:
+
+feedback-driven control loop
+
+Your logic was:
+
+while true:
+    if traffic_low:
+        cleanup_small_batch()
+    else:
+        yield()
+
+That’s advanced operational systems thinking.
+
+Modern infra is FULL of this:
+
+Kubernetes controllers
+autoscalers
+congestion control
+retry systems
+Best resources
+System Design Playbook — Distributed Scheduler Concepts
+Job Scheduler System Design  https://crackingwalnuts.com/post/job-scheduler-system-design?utm_source=chatgpt.com
+
+Key interview sentence:
+
+“The scheduler behaved more like a continuously running controller than a workflow orchestrator.”
